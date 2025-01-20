@@ -178,4 +178,4 @@ end)
 print("Script đã khởi chạy thành công!")
 
 -- Loadstring
-loadstring(game:HttpGet("https://pastebin.com/raw/YOUR_SCRIPT_URL", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/tuanKhanh25/Khanhji/refs/heads/main/Khanh", true))()

@@ -1,0 +1,181 @@
+local settings = {
+    autoFarm = false,
+    autoFly = false,
+    autoFruit = false,
+    autoCollectChests = false,
+    autoQuest = false,
+    autoRespawn = true,
+    safeMode = true,
+    autoBuyItems = false,
+    farmSpeed = 1, -- Tốc độ đánh
+    flySpeed = 50, -- Tốc độ bay
+    flyHeight = 100, -- Độ cao bay
+    teleportEnabled = true, -- Cho phép dịch chuyển
+    randomDelay = true,
+    minDelay = 2,
+    maxDelay = 4,
+    menuEnabled = true
+}
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local flyControl = nil
+
+-- Hàm tạo menu GUI
+local function createMenu()
+    local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0, 200, 0, 400)
+    MainFrame.Position = UDim2.new(0, 10, 0, 10)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainFrame.BackgroundTransparency = 0.5
+
+    -- Tạo các nút cho menu
+    local features = {"autoFarm", "autoFly", "autoFruit", "autoCollectChests", "autoQuest", "safeMode", "autoRespawn"}
+    for i, feature in ipairs(features) do
+        local Button = Instance.new("TextButton", MainFrame)
+        Button.Size = UDim2.new(0, 180, 0, 30)
+        Button.Position = UDim2.new(0, 10, 0, (i - 1) * 35 + 10)
+        Button.Text = feature
+        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        Button.TextColor3 = Color3.new(1, 1, 1)
+
+        Button.MouseButton1Click:Connect(function()
+            settings[feature] = not settings[feature]
+            Button.Text = feature .. ": " .. (settings[feature] and "ON" or "OFF")
+        end)
+    end
+end
+
+-- Anti-ban: Tạo độ trễ ngẫu nhiên
+local function randomDelayFunction()
+    if settings.randomDelay then
+        task.wait(math.random(settings.minDelay, settings.maxDelay))
+    end
+end
+
+-- Tự động farm quái
+local function autoFarm()
+    if settings.autoFarm then
+        local enemies = workspace:FindFirstChild("Enemies")
+        if enemies then
+            for _, enemy in ipairs(enemies:GetChildren()) do
+                if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                    hrp.CFrame = enemy.HumanoidRootPart.CFrame
+                    randomDelayFunction()
+                    game.ReplicatedStorage.Remotes.Attack:FireServer(enemy)
+                    task.wait(settings.farmSpeed)
+                end
+            end
+        end
+    end
+end
+
+-- Tự động bay
+local function autoFly()
+    if settings.autoFly then
+        if not flyControl then
+            flyControl = Instance.new("BodyVelocity")
+            flyControl.MaxForce = Vector3.new(5000, 5000, 5000)
+            flyControl.Parent = hrp
+        end
+        flyControl.Velocity = Vector3.new(0, settings.flySpeed, 0)
+        hrp.CFrame = hrp.CFrame + Vector3.new(0, settings.flyHeight, 0)
+        randomDelayFunction()
+    elseif flyControl then
+        flyControl:Destroy()
+        flyControl = nil
+    end
+end
+
+-- Tự động nhặt trái ác quỷ
+local function autoCollectFruits()
+    if settings.autoFruit then
+        local fruits = workspace:FindFirstChild("Fruits")
+        if fruits then
+            for _, fruit in ipairs(fruits:GetChildren()) do
+                if fruit:FindFirstChild("Touched") then
+                    hrp.CFrame = fruit.CFrame
+                    print("Nhặt trái ác quỷ: " .. fruit.Name)
+                    randomDelayFunction()
+                end
+            end
+        end
+    end
+end
+
+-- Tự động nhặt rương
+local function autoCollectChests()
+    if settings.autoCollectChests then
+        local chests = workspace:FindFirstChild("Chests")
+        if chests then
+            for _, chest in ipairs(chests:GetChildren()) do
+                if chest:FindFirstChild("Touch") then
+                    hrp.CFrame = chest.CFrame
+                    print("Nhặt rương: " .. chest.Name)
+                    randomDelayFunction()
+                end
+            end
+        end
+    end
+end
+
+-- Tự động hoàn thành nhiệm vụ
+local function autoQuest()
+    if settings.autoQuest then
+        local questNPC = workspace:FindFirstChild("QuestNPC")
+        if questNPC then
+            hrp.CFrame = questNPC.HumanoidRootPart.CFrame
+            randomDelayFunction()
+            print("Nhận nhiệm vụ từ NPC: " .. questNPC.Name)
+        end
+    end
+end
+
+-- Dịch chuyển đến vị trí
+local function teleportTo(location)
+    if settings.teleportEnabled then
+        hrp.CFrame = location
+        print("Đã dịch chuyển đến vị trí.")
+    end
+end
+
+-- Bảo vệ người chơi
+local function safeMode()
+    if settings.safeMode then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health < 50 then
+            print("Kích hoạt chế độ an toàn!")
+            teleportTo(CFrame.new(0, 100, 0)) -- Dịch chuyển lên cao để tránh nguy hiểm
+        end
+    end
+end
+
+-- Tự động hồi sinh
+local function autoRespawn()
+    if settings.autoRespawn and (not character or character.Humanoid.Health <= 0) then
+        print("Nhân vật đã chết, đang hồi sinh...")
+        player:LoadCharacter()
+    end
+end
+
+-- Vòng lặp chính
+spawn(function()
+    createMenu()
+    while true do
+        if settings.autoFarm then autoFarm() end
+        if settings.autoFly then autoFly() end
+        if settings.autoFruit then autoCollectFruits() end
+        if settings.autoCollectChests then autoCollectChests() end
+        if settings.autoQuest then autoQuest() end
+        if settings.safeMode then safeMode() end
+        if settings.autoRespawn then autoRespawn() end
+        task.wait(1)
+    end
+end)
+
+print("Script đã khởi chạy thành công!")
+
+-- Loadstring
+loadstring(game:HttpGet("https://pastebin.com/raw/YOUR_SCRIPT_URL", true))()
